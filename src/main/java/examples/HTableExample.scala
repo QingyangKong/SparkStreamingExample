@@ -55,3 +55,4 @@ object HTableExample {
     table.close()
   }
 }
+
