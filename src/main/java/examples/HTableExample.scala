@@ -9,6 +9,9 @@ import org.apache.hadoop.hbase.CellUtil
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.hbase.HTableDescriptor
+import org.apache.hadoop.hbase.HColumnDescriptor
+import org.apache.hadoop.hbase.client.HBaseAdmin
 
 /*
  * This is to test write and read hbase record from a Scala API
@@ -18,29 +21,68 @@ import org.apache.hadoop.conf.Configuration
  * 
  * compile and run 
  * java -cp {scala-path}:{hbase-path}:jarFilePath examples.HTableExample
+ * 
+ * don't upload this command
+ * java -cp /usr/hdp/2.3.4.7-4/spark/lib/spark-assembly-1.5.2.2.3.4.7-4-hadoop2.7.1.2.3.4.7-4.jar:`hbase classpath`/home/qingyangkong/spark-streaming-example/spark-streaming-example-0.0.1-SNAPSHOT.jar examples.HTableExample "/hbase-secure" "useomlxd00009.nix.us.kworld.kpmg.com:2181" "useomlxd00009.nix.us.kworld.kpmg.com:2181"
+ * 
  * */
 object HTableExample {
-  
+
   private val NPARAMS = 3
 
   def main(args: Array[String]): Unit = {
     //this is to just certify that record can be read and inserted through htable api
     //api in spark and spark streaming is very similar with methods used in this program
-   
     parseArgs(args)
-
     //create a hbase configuration and set 3 attributes
-    val conf = HBaseConfiguration.create()    
-    conf.set("zookeeper.znode.parent", args(0)) 
+    val conf = HBaseConfiguration.create()
+    conf.set("zookeeper.znode.parent", args(0))
     conf.set("hbase.zookeeper.quorum", args(1))
     conf.set("hbase.master", args(2))
     
-    HTableExample.putRecord(conf, "frankTest", "existed", "cf1", "test", "qingyangkong")
+    if(checkTable(conf, "frankTest")){
+      dropTable(conf, "frankTest")
+    }
+    createTable(conf, "frankTest", "cf1")
+    putRecord(conf, "frankTest", "existed", "cf1", "test", "qingyangkong_1")
     println(HTableExample.getRecord(conf, "frankTest", "existed", "cf1", "test"))
   }
   
+  def checkTable(conf: Configuration, tableName: String): Boolean = {
+    //check if the table exists or not
+    val admin = new HBaseAdmin(conf)
+    if(admin.tableExists(tableName)){
+      admin.close()
+      println(tableName + " already exists.")
+      return true
+    }else{
+      println(tableName + " does not exist.")
+      admin.close()
+      return false
+    }
+  }
+  
+  def dropTable(conf: Configuration, tableName: String): Unit = {
+    val admin = new HBaseAdmin(conf)
+    admin.disableTable(tableName)
+    println(tableName + " disabled.")
+    admin.deleteTable(tableName)
+    println(tableName + " deleted.")
+    admin.close()
+  }
+  
+  
+  def createTable(conf: Configuration, tableName: String, cf: String): Unit = {
+    val htable = new HTableDescriptor(tableName)
+    htable.addFamily(new HColumnDescriptor(cf))
+    val admin = new HBaseAdmin(conf)
+    admin.createTable(htable)
+    admin.close()
+    println(tableName + " created.")
+  }
+
   //find a record with rowkey, cf and qualifier
-  def getRecord(conf: Configuration, tableName: String, rowKey: String, cf: String, qualifier: String):String = {
+  def getRecord(conf: Configuration, tableName: String, rowKey: String, cf: String, qualifier: String): String = {
     val table = new HTable(conf, tableName.getBytes)
     val getOnce = new Get(rowKey.getBytes)
     val res: Result = table.get(getOnce)
@@ -50,7 +92,7 @@ object HTableExample {
     table.close()
     return resStr
   }
-  
+
   //put a record into hbase with rk, cf and qualifier.
   def putRecord(conf: Configuration, tableName: String, rowKey: String, cf: String, qualifier: String, value: String): Unit = {
     val table = new HTable(conf, tableName.getBytes)
@@ -80,4 +122,3 @@ object HTableExample {
     println(usage)
   }
 }
-
