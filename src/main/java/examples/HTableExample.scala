@@ -20,10 +20,15 @@ import org.apache.hadoop.conf.Configuration
  * java -cp {scala-path}:{hbase-path}:jarFilePath examples.HTableExample
  * */
 object HTableExample {
+  
+  private val NPARAMS = 3
+
   def main(args: Array[String]): Unit = {
     //this is to just certify that record can be read and inserted through htable api
     //api in spark and spark streaming is very similar with methods used in this program
-    
+   
+    parseArgs(args)
+
     //create a hbase configuration and set 3 attributes
     val conf = HBaseConfiguration.create()    
     conf.set("zookeeper.znode.parent", args(0)) 
@@ -53,6 +58,26 @@ object HTableExample {
     putOnce.addColumn(cf.getBytes, qualifier.getBytes, value.getBytes)
     table.put(putOnce)
     table.close()
+  }
+
+  private def parseArgs(args: Array[String]): Unit = {
+    if (args.length != NPARAMS) {
+      printUsage
+      System.exit(1)
+    }
+  }
+
+  private def printUsage(): Unit = {
+    val usage: String = "HTable Example\n" +
+      "\n" +
+      "Usage: HTableExample\n" +
+      "\n" +
+      "args-1: zookeeper.znode.parent (string)\n" +
+      "args-2: hbase.zookeeper.quorum (string)\n"+
+      "args-3: hbase.master - (string)\n"+
+      "they can be found in configuration file: hbase-site.xml"
+
+    println(usage)
   }
 }
 
