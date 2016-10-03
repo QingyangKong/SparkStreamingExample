@@ -14,12 +14,13 @@ import org.apache.hadoop.hbase.HColumnDescriptor
 import org.apache.hadoop.hbase.client.HBaseAdmin
 
 /*
- * This is to test write and read hbase record from a Scala API
+ * This is an example testing basic manipulations of HBase in Scala API
  * 
- * a table named 'frankTest' needs to be created in HBase before
- * command to create table: create 'frankTest', 'cf1'
+ * A table named 'frankTest' with column family 'cf1' will be checked and created.
+ * A record with rowkey 'existed' value 'old_value' will be inserted into the table
  * 
  * compile and run 
+ * maven package
  * java -cp {scala-path}:{hbase-path}:jarFilePath examples.HTableExample
  * 
  * 
@@ -42,7 +43,7 @@ object HTableExample {
       dropTable(conf, "frankTest")
     }
     createTable(conf, "frankTest", "cf1")
-    putRecord(conf, "frankTest", "existed", "cf1", "test", "qingyangkong_1")
+    putRecord(conf, "frankTest", "existed", "cf1", "test", "old_value")
     println(HTableExample.getRecord(conf, "frankTest", "existed", "cf1", "test"))
   }
   
