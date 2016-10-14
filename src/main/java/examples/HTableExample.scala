@@ -35,6 +35,7 @@ object HTableExample {
     parseArgs(args)
     //create a hbase configuration and set 3 attributes
     val conf = HBaseConfiguration.create()
+    //three params can be found in hbase/conf/core-site.xml and hbase-site.xml
     conf.set("zookeeper.znode.parent", args(0))
     conf.set("hbase.zookeeper.quorum", args(1))
     conf.set("hbase.master", args(2))
