@@ -40,12 +40,18 @@ object HTableExample {
     conf.set("hbase.zookeeper.quorum", args(1))
     conf.set("hbase.master", args(2))
     
-    if(checkTable(conf, "frankTest")){
-      dropTable(conf, "frankTest")
+    val tableName = "frankTest"
+    val cf = "cf1"
+    val rowKey = "existed"
+    val qualifier = "test"
+    val value ="qingyangkong_1"
+    
+    if(checkTable(conf, tableName)){
+      dropTable(conf, tableName)
     }
-    createTable(conf, "frankTest", "cf1")
-    putRecord(conf, "frankTest", "existed", "cf1", "test", "old_value")
-    println(HTableExample.getRecord(conf, "frankTest", "existed", "cf1", "test"))
+    createTable(conf, tableName, cf)
+    putRecord(conf, tableName, rowKey, cf, qualifier, value)
+    println(HTableExample.getRecord(conf, tableName, rowKey, cf, qualifier))
   }
   
   def checkTable(conf: Configuration, tableName: String): Boolean = {
@@ -86,8 +92,7 @@ object HTableExample {
     val table = new HTable(conf, tableName.getBytes)
     val getOnce = new Get(rowKey.getBytes)
     val res: Result = table.get(getOnce)
-    val resCell: Cell = res.getColumnLatestCell(cf.getBytes, qualifier.getBytes)
-    val resBytes: Array[Byte] = CellUtil.cloneValue(resCell)
+    val resBytes: Array[Byte] = res.getValue(cf.getBytes, qualifier.getBytes)
     val resStr: String = Bytes.toString(resBytes)
     table.close()
     return resStr
