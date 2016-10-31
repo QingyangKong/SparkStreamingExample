@@ -52,12 +52,15 @@ object DataFrameExample {
 
     conf.set(TableInputFormat.INPUT_TABLE, tableName)
     
+    //get data from hbase as RDD[(ImmutableBytesWritable, Result)]
+    //ImmutableBytesWritable is rowkey and values can be accessed through Result
     val rawRDD = sc.newAPIHadoopRDD(
       conf,
       classOf[TableInputFormat],
       classOf[ImmutableBytesWritable],
       classOf[Result])
 
+    //convert RDD[(ImmutableBytesWritable, Result)] to a a RDD[(String, String, String, String, String, String)]
     val tupleRDD = rawRDD.map(tuple => (
       Bytes.toString(tuple._1.get),
       Bytes.toString(tuple._2.getValue("cf1".getBytes, "Id".getBytes)),
@@ -66,8 +69,10 @@ object DataFrameExample {
       Bytes.toString(tuple._2.getValue("cf1".getBytes, "Type".getBytes)),
       Bytes.toString(tuple._2.getValue("cf1".getBytes, "Value".getBytes))))
       
+    //create a RDD[Row] that can be used to create dataframe
     val rowRDD = tupleRDD.map(tuple => Row(tuple._1, tuple._2, tuple._3, tuple._4, tuple._5, tuple._6))
     
+    //schema used to create dataframe
     val rowKey = StructField("RK", StringType)
     val colId = StructField("ID", StringType)
     val colName = StructField("Name", StringType)
@@ -77,6 +82,7 @@ object DataFrameExample {
     
     val tableStruct = StructType(Seq(rowKey, colId, colName, colTNum, colType, colvalue))
     
+    //create DataFrame with schema
     val df = sqlContext.createDataFrame(rowRDD, tableStruct)
     df
   }
