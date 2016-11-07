@@ -12,7 +12,11 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HTableDescriptor
 import org.apache.hadoop.hbase.HColumnDescriptor
 import org.apache.hadoop.hbase.client.HBaseAdmin
-
+import org.apache.hadoop.hbase.client.Scan
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter
+import org.apache.hadoop.hbase.filter.Filter
+import org.apache.hadoop.hbase.filter.FilterList
+import org.apache.hadoop.hbase.filter.CompareFilter
 /*
  * This is an example testing basic manipulations of HBase in Scala API
  * 
@@ -104,6 +108,39 @@ object HTableExample {
     val putOnce = new Put(rowKey.getBytes)
     putOnce.addColumn(cf.getBytes, qualifier.getBytes, value.getBytes)
     table.put(putOnce)
+    table.close()
+  }
+
+  def scanRecordsWithFilter(conf: Configuration, tableName: String): Unit = {
+    //create SingleValueColumnFilter and add them into a filterList 
+    val f1 = new SingleColumnValueFilter(Bytes.toBytes("cf1"), Bytes.toBytes("ID"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes("1"))
+    val f2 = new SingleColumnValueFilter(Bytes.toBytes("cf1"), Bytes.toBytes("Name"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes("qingyangkong"))
+    val filterList = new FilterList(FilterList.Operator.MUST_PASS_ALL)
+    filterList.addFilter(f1)
+    filterList.addFilter(f2)
+    
+    //create a scan object
+    val scanOnce = new Scan
+    
+    //add filterList into scan
+    scanOnce.setFilter(filterList)
+    //add columns into scan
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("ID"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Name"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("TNum"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Type"))
+    
+    //create HTable and run scan
+    val table = new HTable(conf: Configuration, tableName.getBytes)
+    val resultScanner = table.getScanner(scanOnce)
+
+    //get result from scan and print them out
+    var result = resultScanner.next()
+    while(result != null){
+      println(Bytes.toString(result.getValue("cf1".getBytes, "Name".getBytes)))
+      result = resultScanner.next()
+    }
+    resultScanner.close()
     table.close()
   }
 
