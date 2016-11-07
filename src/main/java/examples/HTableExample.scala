@@ -12,21 +12,21 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HTableDescriptor
 import org.apache.hadoop.hbase.HColumnDescriptor
 import org.apache.hadoop.hbase.client.HBaseAdmin
+
 import org.apache.hadoop.hbase.client.Scan
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter
 import org.apache.hadoop.hbase.filter.Filter
 import org.apache.hadoop.hbase.filter.FilterList
 import org.apache.hadoop.hbase.filter.CompareFilter
+
 /*
- * This is an example testing basic manipulations of HBase in Scala API
+ * This is to test write and read hbase record from a Scala API
  * 
- * A table named 'frankTest' with column family 'cf1' will be checked and created.
- * A record with rowkey 'existed' value 'old_value' will be inserted into the table
+ * a table named 'frankTest' needs to be created in HBase before
+ * command to create table: create 'frankTest', 'cf1'
  * 
  * compile and run 
- * maven package
  * java -cp {scala-path}:{hbase-path}:jarFilePath examples.HTableExample
- * 
  * 
  * */
 object HTableExample {
@@ -37,25 +37,56 @@ object HTableExample {
     //this is to just certify that record can be read and inserted through htable api
     //api in spark and spark streaming is very similar with methods used in this program
     parseArgs(args)
+    
     //create a hbase configuration and set 3 attributes
     val conf = HBaseConfiguration.create()
-    //three params can be found in hbase/conf/core-site.xml and hbase-site.xml
     conf.set("zookeeper.znode.parent", args(0))
     conf.set("hbase.zookeeper.quorum", args(1))
     conf.set("hbase.master", args(2))
     
     val tableName = "frankTest"
     val cf = "cf1"
-    val rowKey = "existed"
-    val qualifier = "test"
-    val value ="qingyangkong_1"
     
+    //drop table if the table exists
     if(checkTable(conf, tableName)){
       dropTable(conf, tableName)
     }
+    
+    //create the table
     createTable(conf, tableName, cf)
-    putRecord(conf, tableName, rowKey, cf, qualifier, value)
-    println(HTableExample.getRecord(conf, tableName, rowKey, cf, qualifier))
+    
+    /* 
+     * Put 3 records into the table created before and put 3 records.
+     * After put , the table should be like:
+     * 
+     * record_1 {ID => "1", Name => "recordName_1", TNum => "111", Type => "TYPE1", Value => "111Value"}
+     * record_2 {ID => "2", Name => "recordName_2", TNum => "222", Type => "TYPE2", Value => "222Value"}
+     * record_3 {ID => "3", Name => "recordName_3", TNum => "333", Type => "TYPE3", Value => "333Value"}
+     * */
+    putRecord(conf, tableName, "record_1", cf, "ID", "1")
+    putRecord(conf, tableName, "record_1", cf, "Name", "recordName_1")
+    putRecord(conf, tableName, "record_1", cf, "TNum", "111")
+    putRecord(conf, tableName, "record_1", cf, "Type", "TYPE1")
+    putRecord(conf, tableName, "record_1", cf, "Value", "111Value")
+    
+    putRecord(conf, tableName, "record_2", cf, "ID", "2")
+    putRecord(conf, tableName, "record_2", cf, "Name", "recordName_2")
+    putRecord(conf, tableName, "record_2", cf, "TNum", "222")
+    putRecord(conf, tableName, "record_2", cf, "Type", "TYPE2")
+    putRecord(conf, tableName, "record_2", cf, "Value", "222Value")
+    
+    putRecord(conf, tableName, "record_3", cf, "ID", "3")
+    putRecord(conf, tableName, "record_3", cf, "Name", "recordName_3")
+    putRecord(conf, tableName, "record_3", cf, "TNum", "333")
+    putRecord(conf, tableName, "record_3", cf, "Type", "TYPE3")
+    putRecord(conf, tableName, "record_3", cf, "Value", "333Value")
+    
+    //get the record with tableName, rowkey and cf:qualifier and the result should be 1
+    println("ID with rowKey record_1 is: " + HTableExample.getRecord(conf, tableName, "record_1", cf, "ID"))
+    
+    //scan the HTable with custom filters
+    //select qualifier when (ID = 1 && Name = recordName_1), and result should be  111Value
+    scanRecordsWithFilter(conf, "frankTest")
   }
   
   def checkTable(conf: Configuration, tableName: String): Boolean = {
@@ -110,34 +141,32 @@ object HTableExample {
     table.put(putOnce)
     table.close()
   }
-
+  
+  
   def scanRecordsWithFilter(conf: Configuration, tableName: String): Unit = {
-    //create SingleValueColumnFilter and add them into a filterList 
+    //create filters
     val f1 = new SingleColumnValueFilter(Bytes.toBytes("cf1"), Bytes.toBytes("ID"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes("1"))
-    val f2 = new SingleColumnValueFilter(Bytes.toBytes("cf1"), Bytes.toBytes("Name"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes("qingyangkong"))
+    val f2 = new SingleColumnValueFilter(Bytes.toBytes("cf1"), Bytes.toBytes("Name"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes("recordName_1"))
     val filterList = new FilterList(FilterList.Operator.MUST_PASS_ALL)
     filterList.addFilter(f1)
     filterList.addFilter(f2)
     
-    //create a scan object
     val scanOnce = new Scan
-    
-    //add filterList into scan
     scanOnce.setFilter(filterList)
-    //add columns into scan
     scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("ID"))
     scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Name"))
     scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("TNum"))
     scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Type"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Value"))
     
-    //create HTable and run scan
+    //create HTable
     val table = new HTable(conf: Configuration, tableName.getBytes)
+    
     val resultScanner = table.getScanner(scanOnce)
-
-    //get result from scan and print them out
     var result = resultScanner.next()
+    
     while(result != null){
-      println(Bytes.toString(result.getValue("cf1".getBytes, "Name".getBytes)))
+      println("valuw with ID=1 and Name=recordName_1 is: " + Bytes.toString(result.getValue("cf1".getBytes, "Value".getBytes)))
       result = resultScanner.next()
     }
     resultScanner.close()
