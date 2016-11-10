@@ -28,6 +28,9 @@ import org.apache.hadoop.hbase.filter.CompareFilter
  * compile and run 
  * java -cp {scala-path}:{hbase-path}:jarFilePath examples.HTableExample
  * 
+ * don't upload this command
+ * java -cp /usr/hdp/2.3.4.7-4/spark/lib/spark-assembly-1.5.2.2.3.4.7-4-hadoop2.7.1.2.3.4.7-4.jar:`hbase classpath`/home/qingyangkong/spark-streaming-example/spark-streaming-example-0.0.1-SNAPSHOT.jar examples.HTableExample "/hbase-secure" "useomlxd00009.nix.us.kworld.kpmg.com:2181" "useomlxd00009.nix.us.kworld.kpmg.com:2181"
+ * 
  * */
 object HTableExample {
 
@@ -63,30 +66,34 @@ object HTableExample {
      * record_2 {ID => "2", Name => "recordName_2", TNum => "222", Type => "TYPE2", Value => "222Value"}
      * record_3 {ID => "3", Name => "recordName_3", TNum => "333", Type => "TYPE3", Value => "333Value"}
      * */
-    putRecord(conf, tableName, "record_1", cf, "ID", "1")
-    putRecord(conf, tableName, "record_1", cf, "Name", "recordName_1")
-    putRecord(conf, tableName, "record_1", cf, "TNum", "111")
-    putRecord(conf, tableName, "record_1", cf, "Type", "TYPE1")
-    putRecord(conf, tableName, "record_1", cf, "Value", "111Value")
+    putRecord(conf, tableName, "record_11", cf, "ID", "1")
+    putRecord(conf, tableName, "record_11", cf, "Name", "recordName_1")
+    putRecord(conf, tableName, "record_11", cf, "TNum", "111")
+    putRecord(conf, tableName, "record_11", cf, "Type", "TYPE1")
+    putRecord(conf, tableName, "record_11", cf, "Value", "111Value")
     
-    putRecord(conf, tableName, "record_2", cf, "ID", "2")
-    putRecord(conf, tableName, "record_2", cf, "Name", "recordName_2")
-    putRecord(conf, tableName, "record_2", cf, "TNum", "222")
-    putRecord(conf, tableName, "record_2", cf, "Type", "TYPE2")
-    putRecord(conf, tableName, "record_2", cf, "Value", "222Value")
+    putRecord(conf, tableName, "record_12", cf, "ID", "2")
+    putRecord(conf, tableName, "record_12", cf, "Name", "recordName_2")
+    putRecord(conf, tableName, "record_12", cf, "TNum", "222")
+    putRecord(conf, tableName, "record_12", cf, "Type", "TYPE2")
+    putRecord(conf, tableName, "record_12", cf, "Value", "222Value")
     
-    putRecord(conf, tableName, "record_3", cf, "ID", "3")
-    putRecord(conf, tableName, "record_3", cf, "Name", "recordName_3")
-    putRecord(conf, tableName, "record_3", cf, "TNum", "333")
-    putRecord(conf, tableName, "record_3", cf, "Type", "TYPE3")
-    putRecord(conf, tableName, "record_3", cf, "Value", "333Value")
+    putRecord(conf, tableName, "record_13", cf, "ID", "3")
+    putRecord(conf, tableName, "record_13", cf, "Name", "recordName_3")
+    putRecord(conf, tableName, "record_13", cf, "TNum", "333")
+    putRecord(conf, tableName, "record_13", cf, "Type", "TYPE3")
+    putRecord(conf, tableName, "record_13", cf, "Value", "333Value")
     
     //get the record with tableName, rowkey and cf:qualifier and the result should be 1
-    println("ID with rowKey record_1 is: " + HTableExample.getRecord(conf, tableName, "record_1", cf, "ID"))
+    println("ID with rowKey record_11 is: " + HTableExample.getRecord(conf, tableName, "record_11", cf, "ID"))
     
     //scan the HTable with custom filters
     //select qualifier when (ID = 1 && Name = recordName_1), and result should be  111Value
     scanRecordsWithFilter(conf, "frankTest")
+    
+    //scan the HTable with a range
+    //select qualifier when rowkey >= "record_11" && rowkey < "record_12"
+    scanRecordsWithStartingAndEndingRecords(conf, "frankTest", "record_11", "record_12")
   }
   
   def checkTable(conf: Configuration, tableName: String): Boolean = {
@@ -142,7 +149,10 @@ object HTableExample {
     table.close()
   }
   
-  
+  /*
+   * In this method, singleColumnValueFilter is used to filter scan result by multiple qualifiers
+   * But this method is very slow. If only used for once, it is OK but it is not a good idea to use this method on massive records
+   * */
   def scanRecordsWithFilter(conf: Configuration, tableName: String): Unit = {
     //create filters
     val f1 = new SingleColumnValueFilter(Bytes.toBytes("cf1"), Bytes.toBytes("ID"), CompareFilter.CompareOp.EQUAL, Bytes.toBytes("1"))
@@ -167,6 +177,33 @@ object HTableExample {
     
     while(result != null){
       println("valuw with ID=1 and Name=recordName_1 is: " + Bytes.toString(result.getValue("cf1".getBytes, "Value".getBytes)))
+      result = resultScanner.next()
+    }
+    resultScanner.close()
+    table.close()
+  }
+  
+  /*
+   * In this method, staring and ending point of the scan are defined in this Scan instantiation
+   * Because rowkeys in the hbase table are saved lexicographically, by using starting and ending point, performance can be improved greatly.
+   * When process large scale of data, this method is better. 
+   * */
+  def scanRecordsWithStartingAndEndingRecords(conf: Configuration, tableName: String, startRecord: String, endRecord: String): Unit = {
+    val scanOnce = new Scan(startRecord.getBytes, endRecord.getBytes)
+    //please be notified, startRecord is included while endRecord is not
+    
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("ID"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Name"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("TNum"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Type"))
+    scanOnce.addColumn(Bytes.toBytes("cf1"), Bytes.toBytes("Value"))
+    val table = new HTable(conf: Configuration, tableName.getBytes)
+    
+    val resultScanner = table.getScanner(scanOnce)
+    var result = resultScanner.next()
+    
+    while(result != null){
+      println(s"value with rowkey from $startRecord to $endRecord is: " + Bytes.toString(result.getValue("cf1".getBytes, "Value".getBytes)))
       result = resultScanner.next()
     }
     resultScanner.close()
