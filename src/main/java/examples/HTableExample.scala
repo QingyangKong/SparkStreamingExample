@@ -27,10 +27,6 @@ import org.apache.hadoop.hbase.filter.CompareFilter
  * 
  * compile and run 
  * java -cp {scala-path}:{hbase-path}:jarFilePath examples.HTableExample
- * 
- * don't upload this command
- * java -cp /usr/hdp/2.3.4.7-4/spark/lib/spark-assembly-1.5.2.2.3.4.7-4-hadoop2.7.1.2.3.4.7-4.jar:`hbase classpath`/home/qingyangkong/spark-streaming-example/spark-streaming-example-0.0.1-SNAPSHOT.jar examples.HTableExample "/hbase-secure" "useomlxd00009.nix.us.kworld.kpmg.com:2181" "useomlxd00009.nix.us.kworld.kpmg.com:2181"
- * 
  * */
 object HTableExample {
 
