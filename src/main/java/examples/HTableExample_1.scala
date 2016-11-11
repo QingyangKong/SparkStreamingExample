@@ -11,13 +11,15 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase.HTableDescriptor
 import org.apache.hadoop.hbase.HColumnDescriptor
 import org.apache.hadoop.hbase.client.HBaseAdmin
-
+  /*
+  * This is example of Scala API for basic manipulations of Hbase table.
+  * This example contains sample codes to Create, disable and Drop hbase tables by hbaseAdmin.
+  * In addition, Get and Put records into the Hbase Table using HTable API.
+  */
 object HTableExample_1 {
   private val NPARAMS = 3
-
+  
   def main(args: Array[String]): Unit = {
-    //this is to just certify that record can be read and inserted through htable api
-    //api in spark and spark streaming is very similar with methods used in this program
     parseArgs(args)
     
     //create a hbase configuration and set 3 attributes
